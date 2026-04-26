@@ -74,7 +74,15 @@ if prompt := st.chat_input("질문을 입력하세요..."):
             try:
                 response = AGENT_FN[agent](clean_query, history)
             except Exception as e:
-                response = f"오류: {e}\n\n모델 ID나 API 키를 확인해주세요."
+                err = str(e)
+                if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                    import re
+                    retry = re.search(r'retry[^0-9]*(\d+)', err)
+                    wait = f"{retry.group(1)}초 후 재시도" if retry else "잠시 후 재시도"
+                    response = f"⚠️ {info['label']} 무료 한도 초과\n\n{wait} 하거나 다른 AI 접두어를 사용해보세요.\n예) `groq:` 또는 `gemini:` 접두어 사용"
+                    st.warning(f"🚫 {info['label']} 쿼터 초과 — {wait}")
+                else:
+                    response = f"오류: {err}\n\n모델 ID나 API 키를 확인해주세요."
         st.write(response)
 
     st.session_state.messages.append({

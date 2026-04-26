@@ -25,7 +25,7 @@ def route(query: str) -> tuple[str, str]:
 
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
     response = client.models.generate_content(
-        model=os.getenv("GEMINI_ROUTER_MODEL", "gemini-2.0-flash-lite"),
+        model=os.getenv("GEMINI_ROUTER_MODEL", "gemini-2.0-flash"),
         contents=f"질문: {query}",
         config=types.GenerateContentConfig(
             system_instruction=ROUTER_PROMPT,
