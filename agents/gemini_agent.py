@@ -12,7 +12,7 @@ SYSTEM_PROMPT = """너는 정보보안 전공 대학생의 AI 어시스턴트야
 - 검색이 필요한 질문은 반드시 최신 정보를 가져온 뒤 답변해."""
 
 
-def ask(query: str, history: list = []) -> str:
+def ask(query: str, history: list = [], image_bytes: bytes = None, mime_type: str = None) -> str:
     client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
     contents = []
@@ -22,10 +22,13 @@ def ask(query: str, history: list = []) -> str:
             role=role,
             parts=[types.Part(text=msg["content"])]
         ))
-    contents.append(types.Content(
-        role="user",
-        parts=[types.Part(text=query)]
-    ))
+
+    user_parts = [types.Part(text=query)]
+    if image_bytes and mime_type:
+        user_parts.append(types.Part(
+            inline_data=types.Blob(mime_type=mime_type, data=image_bytes)
+        ))
+    contents.append(types.Content(role="user", parts=user_parts))
 
     response = client.models.generate_content(
         model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),

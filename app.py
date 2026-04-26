@@ -42,11 +42,15 @@ with st.sidebar:
 # 채팅 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
+if "uploaded_image" not in st.session_state:
+    st.session_state.uploaded_image = None
 
 # 대화 기록 출력
 for msg in st.session_state.messages:
     if msg["role"] == "user":
         with st.chat_message("user"):
+            if msg.get("image"):
+                st.image(msg["image"], width=300)
             st.write(msg["content"])
     else:
         info = AGENTS[msg.get("agent", "gemini")]
@@ -54,13 +58,36 @@ for msg in st.session_state.messages:
             st.caption(f"{info['icon']} {info['label']}")
             st.write(msg["content"])
 
+# 이미지 업로드
+uploaded_file = st.file_uploader(
+    "이미지 첨부 (선택)", type=["png", "jpg", "jpeg", "webp", "gif"],
+    label_visibility="collapsed"
+)
+if uploaded_file:
+    st.session_state.uploaded_image = uploaded_file
+    st.image(uploaded_file, width=200, caption="첨부된 이미지 — 전송 시 Gemini로 자동 분석")
+
 # 입력
 if prompt := st.chat_input("질문을 입력하세요..."):
-    st.session_state.messages.append({"role": "user", "content": prompt})
+    image_file = st.session_state.uploaded_image
+    image_bytes = image_file.getvalue() if image_file else None
+    mime_type = image_file.type if image_file else None
+
+    st.session_state.messages.append({
+        "role": "user",
+        "content": prompt,
+        "image": image_bytes,
+    })
     with st.chat_message("user"):
+        if image_bytes:
+            st.image(image_bytes, width=300)
         st.write(prompt)
 
-    agent, clean_query = route(prompt)
+    # 이미지 있으면 무조건 Gemini
+    if image_bytes:
+        agent, clean_query = "gemini", prompt
+    else:
+        agent, clean_query = route(prompt)
     info = AGENTS[agent]
 
     history = [
@@ -72,7 +99,10 @@ if prompt := st.chat_input("질문을 입력하세요..."):
         st.caption(f"{info['icon']} {info['label']}")
         with st.spinner(f"{info['label']} 처리 중..."):
             try:
-                response = AGENT_FN[agent](clean_query, history)
+                if image_bytes:
+                    response = gemini_ask(clean_query, history, image_bytes, mime_type)
+                else:
+                    response = AGENT_FN[agent](clean_query, history)
             except Exception as e:
                 err = str(e)
                 if "429" in err or "RESOURCE_EXHAUSTED" in err:
@@ -90,3 +120,5 @@ if prompt := st.chat_input("질문을 입력하세요..."):
         "content": response,
         "agent": agent,
     })
+    st.session_state.uploaded_image = None
+    st.rerun()
