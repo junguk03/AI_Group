@@ -42,8 +42,8 @@ with st.sidebar:
 # 채팅 초기화
 if "messages" not in st.session_state:
     st.session_state.messages = []
-if "uploaded_image" not in st.session_state:
-    st.session_state.uploaded_image = None
+if "uploader_key" not in st.session_state:
+    st.session_state.uploader_key = 0
 
 # 대화 기록 출력
 for msg in st.session_state.messages:
@@ -61,29 +61,17 @@ for msg in st.session_state.messages:
 # 이미지 업로드
 uploaded_file = st.file_uploader(
     "이미지 첨부 (선택)", type=["png", "jpg", "jpeg", "webp", "gif"],
-    label_visibility="collapsed"
+    label_visibility="collapsed",
+    key=f"uploader_{st.session_state.uploader_key}",
 )
 if uploaded_file:
-    st.session_state.uploaded_image = uploaded_file
-    st.image(uploaded_file, width=200, caption="첨부된 이미지 — 전송 시 Gemini로 자동 분석")
+    st.image(uploaded_file, width=200, caption="전송 시 Gemini로 자동 분석")
 
 # 입력
 if prompt := st.chat_input("질문을 입력하세요..."):
-    image_file = st.session_state.uploaded_image
-    image_bytes = image_file.getvalue() if image_file else None
-    mime_type = image_file.type if image_file else None
+    image_bytes = uploaded_file.getvalue() if uploaded_file else None
+    mime_type = uploaded_file.type if uploaded_file else None
 
-    st.session_state.messages.append({
-        "role": "user",
-        "content": prompt,
-        "image": image_bytes,
-    })
-    with st.chat_message("user"):
-        if image_bytes:
-            st.image(image_bytes, width=300)
-        st.write(prompt)
-
-    # 이미지 있으면 무조건 Gemini
     if image_bytes:
         agent, clean_query = "gemini", prompt
     else:
@@ -92,33 +80,26 @@ if prompt := st.chat_input("질문을 입력하세요..."):
 
     history = [
         {"role": m["role"], "content": m["content"]}
-        for m in st.session_state.messages[-11:-1]
+        for m in st.session_state.messages[-10:]
     ]
 
-    with st.chat_message("assistant"):
-        st.caption(f"{info['icon']} {info['label']}")
-        with st.spinner(f"{info['label']} 처리 중..."):
-            try:
-                if image_bytes:
-                    response = gemini_ask(clean_query, history, image_bytes, mime_type)
-                else:
-                    response = AGENT_FN[agent](clean_query, history)
-            except Exception as e:
-                err = str(e)
-                if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                    import re
-                    retry = re.search(r'retry[^0-9]*(\d+)', err)
-                    wait = f"{retry.group(1)}초 후 재시도" if retry else "잠시 후 재시도"
-                    response = f"⚠️ {info['label']} 무료 한도 초과\n\n{wait} 하거나 다른 AI 접두어를 사용해보세요.\n예) `groq:` 또는 `gemini:` 접두어 사용"
-                    st.warning(f"🚫 {info['label']} 쿼터 초과 — {wait}")
-                else:
-                    response = f"오류: {err}\n\n모델 ID나 API 키를 확인해주세요."
-        st.write(response)
+    with st.spinner(f"{info['icon']} {info['label']} 처리 중..."):
+        try:
+            if image_bytes:
+                response = gemini_ask(clean_query, history, image_bytes, mime_type)
+            else:
+                response = AGENT_FN[agent](clean_query, history)
+        except Exception as e:
+            err = str(e)
+            if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                import re
+                retry = re.search(r'retry[^0-9]*(\d+)', err)
+                wait = f"{retry.group(1)}초 후 재시도" if retry else "잠시 후 재시도"
+                response = f"⚠️ {info['label']} 무료 한도 초과 — {wait}\n`groq:` 또는 `gemini:` 접두어로 다른 AI 사용 가능"
+            else:
+                response = f"오류: {err}"
 
-    st.session_state.messages.append({
-        "role": "assistant",
-        "content": response,
-        "agent": agent,
-    })
-    st.session_state.uploaded_image = None
+    st.session_state.messages.append({"role": "user", "content": prompt, "image": image_bytes})
+    st.session_state.messages.append({"role": "assistant", "content": response, "agent": agent})
+    st.session_state.uploader_key += 1
     st.rerun()
