@@ -3,3 +3,4 @@ google-genai
 groq
 mistralai
 python-dotenv
+python-pptx
