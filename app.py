@@ -2,25 +2,46 @@ import io
 import streamlit as st
 from dotenv import load_dotenv
 from pptx import Presentation
+from docx import Document
+from pypdf import PdfReader
 from router import route
 from agents.gemini_agent import ask as gemini_ask
 from agents.groq_agent import ask as groq_ask
 from agents.mistral_agent import ask as mistral_ask
 from session_manager import list_sessions, load_session, save_session, create_session, delete_session, auto_name
 
+IMAGE_TYPES = (".png", ".jpg", ".jpeg", ".webp", ".gif")
+DOC_ICONS = {".pptx": "📊", ".pdf": "📄", ".docx": "📝"}
 
-def extract_pptx_text(file_bytes: bytes) -> str:
-    prs = Presentation(io.BytesIO(file_bytes))
-    lines = []
-    for i, slide in enumerate(prs.slides, 1):
-        lines.append(f"[슬라이드 {i}]")
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                for para in shape.text_frame.paragraphs:
-                    text = para.text.strip()
-                    if text:
-                        lines.append(text)
-    return "\n".join(lines)
+
+def extract_file_text(file_bytes: bytes, filename: str) -> str:
+    if filename.endswith(".pptx"):
+        prs = Presentation(io.BytesIO(file_bytes))
+        lines = []
+        for i, slide in enumerate(prs.slides, 1):
+            lines.append(f"[슬라이드 {i}]")
+            for shape in slide.shapes:
+                if shape.has_text_frame:
+                    for para in shape.text_frame.paragraphs:
+                        text = para.text.strip()
+                        if text:
+                            lines.append(text)
+        return "\n".join(lines)
+
+    if filename.endswith(".docx"):
+        doc = Document(io.BytesIO(file_bytes))
+        return "\n".join(p.text.strip() for p in doc.paragraphs if p.text.strip())
+
+    if filename.endswith(".pdf"):
+        reader = PdfReader(io.BytesIO(file_bytes))
+        lines = []
+        for i, page in enumerate(reader.pages, 1):
+            text = page.extract_text()
+            if text:
+                lines.append(f"[페이지 {i}]\n{text.strip()}")
+        return "\n".join(lines)
+
+    return ""
 
 load_dotenv()
 
@@ -117,29 +138,33 @@ for msg in st.session_state.messages:
 
 # 파일 업로드
 uploaded_file = st.file_uploader(
-    "파일 첨부 (선택)", type=["png", "jpg", "jpeg", "webp", "gif", "pptx"],
+    "파일 첨부 (선택)",
+    type=["png", "jpg", "jpeg", "webp", "gif", "pptx", "pdf", "docx"],
     label_visibility="collapsed",
     key=f"uploader_{st.session_state.uploader_key}",
 )
 if uploaded_file:
-    if uploaded_file.name.endswith(".pptx"):
-        st.caption(f"📊 {uploaded_file.name} — 전송 시 텍스트 추출 후 분석")
-    else:
+    fname = uploaded_file.name.lower()
+    if any(fname.endswith(ext) for ext in IMAGE_TYPES):
         st.image(uploaded_file, width=200, caption="전송 시 Gemini로 자동 분석")
+    else:
+        icon = next((v for k, v in DOC_ICONS.items() if fname.endswith(k)), "📎")
+        st.caption(f"{icon} {uploaded_file.name} — 전송 시 텍스트 추출 후 분석")
 
 # 입력
 if prompt := st.chat_input("질문을 입력하세요..."):
-    is_pptx = uploaded_file and uploaded_file.name.endswith(".pptx")
-    is_image = uploaded_file and not is_pptx
+    fname = uploaded_file.name.lower() if uploaded_file else ""
+    is_image = uploaded_file and any(fname.endswith(ext) for ext in IMAGE_TYPES)
+    is_doc   = uploaded_file and not is_image
 
     image_bytes = uploaded_file.getvalue() if is_image else None
-    mime_type = uploaded_file.type if is_image else None
+    mime_type   = uploaded_file.type if is_image else None
 
-    if is_pptx:
-        pptx_text = extract_pptx_text(uploaded_file.getvalue())
-        clean_query = f"다음 PPT 내용을 참고해서 답해줘:\n\n{pptx_text}\n\n질문: {prompt}"
+    if is_doc:
+        doc_text = extract_file_text(uploaded_file.getvalue(), fname)
+        clean_query = f"다음 파일 내용을 참고해서 답해줘:\n\n{doc_text}\n\n질문: {prompt}"
         agent, _ = route(prompt)
-    elif image_bytes:
+    elif is_image:
         agent, clean_query = "gemini", prompt
     else:
         agent, clean_query = route(prompt)

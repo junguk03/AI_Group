@@ -4,3 +4,5 @@ groq
 mistralai
 python-dotenv
 python-pptx
+python-docx
+pypdf
