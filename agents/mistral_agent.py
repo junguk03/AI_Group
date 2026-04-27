@@ -1,5 +1,10 @@
 import os
-from mistralai import Mistral
+
+try:
+    from mistralai import Mistral
+    MISTRAL_AVAILABLE = True
+except ImportError:
+    MISTRAL_AVAILABLE = False
 
 SYSTEM_PROMPT = """너는 정보보안 전공 대학생의 코딩 전문 어시스턴트야.
 
@@ -15,6 +20,8 @@ CLIENT = None
 
 def get_client():
     global CLIENT
+    if not MISTRAL_AVAILABLE:
+        raise RuntimeError("mistralai 패키지가 설치되지 않았습니다. requirements.txt를 확인하세요.")
     if CLIENT is None:
         CLIENT = Mistral(api_key=os.getenv("MISTRAL_API_KEY"))
     return CLIENT
