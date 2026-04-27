@@ -31,9 +31,12 @@ def list_sessions() -> list[dict]:
     for fname in os.listdir(SESSIONS_DIR):
         if fname.endswith(".json"):
             path = os.path.join(SESSIONS_DIR, fname)
-            with open(path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                sessions.append(data)
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    data = json.load(f, object_hook=_decode)
+                    sessions.append(data)
+            except (json.JSONDecodeError, KeyError):
+                os.remove(path)
     return sorted(sessions, key=lambda x: x["created_at"], reverse=True)
 
 
