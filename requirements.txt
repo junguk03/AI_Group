@@ -1,7 +1,7 @@
 streamlit
 google-genai
 groq
-mistralai
+mistralai>=1.0.0
 python-dotenv
 python-pptx
 python-docx

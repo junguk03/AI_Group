@@ -136,20 +136,29 @@ for msg in st.session_state.messages:
             st.caption(f"{info['icon']} {info['label']}")
             st.write(msg["content"])
 
-# 파일 업로드
-uploaded_file = st.file_uploader(
-    "파일 첨부 (선택)",
-    type=["png", "jpg", "jpeg", "webp", "gif", "pptx", "pdf", "docx"],
-    label_visibility="collapsed",
-    key=f"uploader_{st.session_state.uploader_key}",
-)
-if uploaded_file:
-    fname = uploaded_file.name.lower()
-    if any(fname.endswith(ext) for ext in IMAGE_TYPES):
-        st.image(uploaded_file, width=200, caption="전송 시 Gemini로 자동 분석")
-    else:
-        icon = next((v for k, v in DOC_ICONS.items() if fname.endswith(k)), "📎")
-        st.caption(f"{icon} {uploaded_file.name} — 전송 시 텍스트 추출 후 분석")
+# 파일 첨부 버튼 (좌하단 아이콘)
+col_attach, col_badge = st.columns([1, 9])
+with col_attach:
+    with st.popover("📎", help="이미지 · PDF · PPTX · DOCX"):
+        uploaded_file = st.file_uploader(
+            "파일 선택",
+            type=["png", "jpg", "jpeg", "webp", "gif", "pptx", "pdf", "docx"],
+            label_visibility="collapsed",
+            key=f"uploader_{st.session_state.uploader_key}",
+        )
+        if uploaded_file:
+            fname_preview = uploaded_file.name.lower()
+            if any(fname_preview.endswith(ext) for ext in IMAGE_TYPES):
+                st.image(uploaded_file, width=200)
+            else:
+                icon = next((v for k, v in DOC_ICONS.items() if fname_preview.endswith(k)), "📎")
+                st.success(f"{icon} {uploaded_file.name}")
+
+with col_badge:
+    if uploaded_file:
+        fname_preview = uploaded_file.name.lower()
+        icon = next((v for k, v in DOC_ICONS.items() if fname_preview.endswith(k)), "🖼️")
+        st.caption(f"{icon} **{uploaded_file.name}** 첨부됨")
 
 # 입력
 if prompt := st.chat_input("질문을 입력하세요..."):
