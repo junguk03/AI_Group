@@ -26,7 +26,7 @@ def route(query: str) -> tuple[str, str]:
     try:
         client = Groq(api_key=os.getenv("GROQ_API_KEY"))
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model=os.getenv("GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
             messages=[
                 {"role": "system", "content": ROUTER_PROMPT},
                 {"role": "user", "content": f"질문: {query}"},

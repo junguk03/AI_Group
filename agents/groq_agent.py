@@ -27,7 +27,7 @@ def ask(query: str, history: list = []) -> str:
     messages.append({"role": "user", "content": query})
 
     response = get_client().chat.completions.create(
-        model=os.getenv("GROQ_MODEL", "llama-4-scout-17b-16e-instruct"),
+        model=os.getenv("GROQ_MODEL", "meta-llama/llama-4-scout-17b-16e-instruct"),
         messages=messages,
     )
     return response.choices[0].message.content
