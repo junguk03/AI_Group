@@ -1,8 +1,22 @@
 from __future__ import annotations
+import base64
 import json
 import os
 import uuid
 from datetime import datetime
+
+
+class _Encoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, bytes):
+            return {"__bytes__": base64.b64encode(obj).decode()}
+        return super().default(obj)
+
+
+def _decode(obj):
+    if "__bytes__" in obj:
+        return base64.b64decode(obj["__bytes__"])
+    return obj
 
 SESSIONS_DIR = os.path.join(os.path.dirname(__file__), "sessions")
 
@@ -28,7 +42,7 @@ def load_session(session_id: str) -> dict | None:
     if not os.path.exists(path):
         return None
     with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
+        return json.load(f, object_hook=_decode)
 
 
 def save_session(session_id: str, name: str, messages: list):
@@ -43,7 +57,7 @@ def save_session(session_id: str, name: str, messages: list):
             "messages": messages,
             "created_at": created_at,
             "updated_at": datetime.now().isoformat(),
-        }, f, ensure_ascii=False, indent=2)
+        }, f, ensure_ascii=False, indent=2, cls=_Encoder)
 
 
 def create_session() -> str:
