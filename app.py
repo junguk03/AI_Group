@@ -57,7 +57,24 @@ AGENT_FN = {
     "mistral": mistral_ask,
 }
 
-st.set_page_config(page_title="OrchestrAI", page_icon="🤖", layout="wide")
+st.set_page_config(page_title="OrchestrAI", page_icon="🤖", layout="centered")
+
+st.markdown("""
+<style>
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .stChatMessage { font-size: 14px; }
+    .stChatMessage p { word-break: break-word; }
+    [data-testid="stSidebar"] { min-width: 80vw !important; }
+    [data-testid="stChatInput"] textarea { font-size: 16px; }
+}
+/* 전체 너비 채팅 영역 */
+.stChatMessage { max-width: 100%; }
+[data-testid="stChatMessageContent"] { max-width: 100%; overflow-x: auto; }
+/* 코드블록 가로 스크롤 */
+pre { overflow-x: auto; white-space: pre-wrap; word-wrap: break-word; }
+</style>
+""", unsafe_allow_html=True)
 
 # 세션 초기화
 if "current_session_id" not in st.session_state:
