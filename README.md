@@ -6,7 +6,7 @@
 
 ## 왜 만들었나
 
-AI마다 잘하는 게 다릅니다. 매번 어떤 AI를 쓸지 고민하지 않아도, 질문 하나만 보내면 가장 잘 답할 수 있는 AI가 자동으로 선택됩니다.
+AI마다 잘하는 게 다릅니다. 검색은 Gemini, 보안 지식은 Groq, 코드는 Mistral. 매번 어떤 AI를 쓸지 고민하지 않고 질문 하나만 보내면 가장 잘 답할 수 있는 AI가 자동으로 선택됩니다.
 
 ---
 
@@ -14,8 +14,8 @@ AI마다 잘하는 게 다릅니다. 매번 어떤 AI를 쓸지 고민하지 않
 
 | AI | 모델 | 특화 영역 | 비용 |
 |---|---|---|---|
-| 🔵 Gemini | gemini-2.5-flash | 실시간 검색 · 글쓰기 · 이미지 분석 | 무료 |
-| 🟠 Groq | llama-4-scout | 보안 · CTF · 취약점 · 리눅스 · 암호학 | 무료 |
+| 🔵 Gemini | gemini-2.5-flash | 실시간 검색 · 글쓰기 · 진로 · 이미지 분석 | 무료 |
+| 🟠 Groq | llama-4-scout-17b | 보안 · CTF · 취약점 · 리눅스 · 암호학 | 무료 |
 | 🟣 Mistral | codestral-latest | 코드 작성 · 리뷰 · 개발 | 무료 |
 
 ---
@@ -23,11 +23,13 @@ AI마다 잘하는 게 다릅니다. 매번 어떤 AI를 쓸지 고민하지 않
 ## 주요 기능
 
 ```
-자동 라우팅     질문을 분석해 적합한 AI에게 자동 전달
-검색 파이프라인  최신 정보가 필요하면 웹 검색 후 답변 생성
-이미지 분석     피그마 스케치 등 이미지 첨부 지원
-접두어 모드     groq: / gemini: / code: 붙이면 해당 AI로 직접 전송
-Streamlit UI   브라우저 기반 채팅 인터페이스
+자동 라우팅      Groq Llama 4가 질문을 분류해 적합한 AI에게 전달
+웹 검색         Gemini가 Google Search grounding으로 최신 정보 답변
+이미지 분석     피그마, 스케치, 다이어그램 등 첨부 시 Gemini가 분석
+문서 첨부       PDF · PPTX · DOCX 텍스트 추출 후 라우팅
+세션 관리       대화 자동 저장, 사이드바에서 이전 대화 복원/삭제
+모바일 대응     반응형 CSS로 폰에서도 사용 가능
+접두어 모드     gemini: / groq: / code: 로 AI 직접 지정
 ```
 
 ---
@@ -38,13 +40,17 @@ Streamlit UI   브라우저 기반 채팅 인터페이스
 사용자 입력
     │
     ▼
-[Gemini 라우터] ── 어떤 AI가 이 질문에 가장 적합한가?
+접두어 검사 ── gemini: / groq: / code: / mistral: 있으면 해당 AI로 직행
     │
-    ├── 보안 / CTF / 리눅스 / 취약점   ──▶  Groq
-    ├── 코드 / 개발 / 깃허브            ──▶  Mistral
-    ├── 검색 필요 / 글쓰기 / 이미지     ──▶  Gemini
-    └── 접두어 지정 (groq: / code:)    ──▶  해당 AI 직접 호출
+    ▼
+[Groq Llama 4 라우터] ── 질문 주제 분류
+    │
+    ├── 검색 / 최신 / 글쓰기 / 진로 / 이미지   ──▶  🔵 Gemini
+    ├── 보안 / CTF / 취약점 / 리눅스 / 암호학  ──▶  🟠 Groq
+    └── 코드 / 개발 / 깃허브                  ──▶  🟣 Mistral
 ```
+
+라우터를 Gemini가 아닌 **Groq**으로 둔 이유: Gemini의 무료 할당량을 답변용으로 아끼고, 라우팅 같은 단순 분류는 더 빠른 Groq Llama 4가 처리합니다.
 
 ---
 
@@ -52,17 +58,17 @@ Streamlit UI   브라우저 기반 채팅 인터페이스
 
 | 주제 | 담당 |
 |---|---|
-| 보안 기사 · BOB 후기 · 취업 트렌드 · 강연/전시회 | 🔵 Gemini |
-| PortSwigger · Bandit · CTF · 모의해킹 · 악성코드 · 암호학 | 🟠 Groq |
-| 리눅스 · 클라우드 · 자격증 개념 | 🟠 Groq |
-| 프로그래밍 언어 · 코드 리뷰 · 깃허브 사용법 | 🟣 Mistral |
-| 피그마 · 디자인 · 대학 과제 · 건강 상담 · 진로 상담 | 🔵 Gemini |
+| 보안 기사 · 트렌드 · BOB · 강연 / 전시회 / 자격증 일정 | 🔵 Gemini |
+| 취업 · 진로 · 채용 · 연봉 (실제 채용 트렌드 기반) | 🔵 Gemini |
+| 글쓰기 · 감상문 · 에세이 · 건강 상담 | 🔵 Gemini |
+| 피그마 · 디자인 · 이미지 분석 | 🔵 Gemini |
+| PortSwigger · Bandit · CTF · 워게임 · 모의해킹 · 악성코드 · 암호학 | 🟠 Groq |
+| 리눅스 · 클라우드 · 네트워크 | 🟠 Groq |
+| 프로그래밍 언어 · 코드 리뷰 · 깃허브 사용법 · 개발 일반 | 🟣 Mistral |
 
 ---
 
 ## 시스템 프롬프트
-
-각 AI에게 공통으로 부여된 응답 원칙입니다.
 
 #### 공통 원칙
 ```
@@ -74,17 +80,18 @@ Streamlit UI   브라우저 기반 채팅 인터페이스
 
 #### Gemini
 ```
-검색이 필요한 질문은 반드시 최신 정보를 가져온 뒤 답변한다.
+검색이 필요한 질문은 Google Search grounding으로 최신 정보를 가져온 뒤 답변.
 취업/진로 질문은 2026~2028년 보안 채용 시장 기준으로
-실제 채용 공고, 기사, 트렌드를 근거로 구체적으로 말한다.
-공감형 위로보다 현실적인 정보 제공을 우선한다.
+실제 채용 공고와 트렌드를 근거로 구체적으로 답변.
+공감형 위로보다 현실적인 정보 제공 우선.
 ```
 
 #### Groq
 ```
 보안/기술 질문 전담. 모르면 모른다고 한다.
 취약점·해킹 기법은 교육 목적으로 정확하게 설명한다.
-사용자가 생각 못한 공격 벡터나 방어 관점도 함께 제시한다.
+공격 관점과 방어 관점 양쪽 다 제시한다.
+답변 끝에 더 깊게 볼 자료/키워드 1~2개 추천.
 ```
 
 #### Mistral
@@ -110,10 +117,31 @@ cp .env.example .env
 streamlit run app.py
 ```
 
+### Streamlit Community Cloud 배포
+
+1. GitHub repo 연결 후 `app.py` 지정
+2. Secrets에 API 키 3종 추가
+3. push 하면 자동 재배포
+
+---
+
+## 프로젝트 구조
+
+```
+.
+├── app.py                  # Streamlit UI · 세션 · 파일 첨부
+├── router.py               # Groq 기반 자동 라우팅
+├── session_manager.py      # JSON 세션 저장/로드 (이미지 base64 인코딩)
+├── agents/
+│   ├── gemini_agent.py     # Gemini + Google Search + 이미지
+│   ├── groq_agent.py       # Groq Llama 4 Scout
+│   └── mistral_agent.py    # Mistral Codestral
+├── sessions/               # 대화 기록 (gitignore)
+└── requirements.txt
+```
+
 ---
 
 ## 기술 스택
 
-`Python` · `Streamlit` · `Google AI Studio` · `Groq` · `Mistral AI`
-# AI_Group
-# AI_Group
+`Python` · `Streamlit` · `Google AI Studio` · `Groq` · `Mistral AI` · `python-pptx` · `pypdf` · `python-docx`
